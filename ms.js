@@ -2,9 +2,9 @@ import {
   S, h, db, toast, fmt, tsMs, errMsg, myName, writeLog, scheduleRender, confirmButton, keyed, sigOf, patchChildren,
   itemLabel, itemById, itemFull, codeText, lsGet, lsSet, colorFor, cut, copyText, modal, editArea, autosize, restoreFocus,
   doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, serverTimestamp, writeBatch, arrayUnion
-} from "./core.js?v=9";
-import { parseMarkup, plainOf, diffMarkup, originalPieces, insertedPieces, fmtNode, markupNodes, tableToText, textToTable } from "./markup.js?v=9";
-import { getFileURL, fileByPath } from "./files.js?v=9";
+} from "./core.js?v=10";
+import { parseMarkup, plainOf, diffMarkup, originalPieces, insertedPieces, fmtNode, markupNodes, tableToText, textToTable } from "./markup.js?v=10";
+import { getFileURL, fileByPath } from "./files.js?v=10";
 
 export const M = {
   blocks: [], byId: new Map(), plain: new Map(), loaded: false, loading: false, error: "",
@@ -445,6 +445,7 @@ function toolbar() {
   const exp = h("div", { class: "exports" },
     h("button", { class: "small", text: "최종본 텍스트 복사", onclick: () => copyText(finalText()) }),
     h("button", { class: "small", text: "수정·표시 목록 복사", onclick: () => copyText(changeList()) }),
+    h("button", { class: "small", text: "Word로 내보내기", title: "제출본 docx에 표시를 Word 메모로, 수정을 변경 추적으로 넣어 내려받기", onclick: () => import("./export.js?v=10").then(m => m.openExportDialog()).catch(e => toast("열지 못했습니다: " + errMsg(e))) }),
     h("button", { class: "small", text: "사용법", onclick: showHelp }));
   return h("div", { class: "ms-bar" }, h("div", { class: "ms-bar-row" }, h("span", { class: "muted", text: "보기" }), seg, search, h("span", { class: "grow" }), exp),
     h("div", { class: "ms-bar-row" }, toggles, h("span", { class: "grow" }), stats));
