@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>리젝 대응 작업실</title>
+<script type="importmap">
+{"imports":{
+"fb/app":"https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js",
+"fb/auth":"https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js",
+"fb/firestore":"https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js"
+}}
+</script>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#1c2024; --muted:#5f6b76; --line:#dde2e7;
+  --accent:#1f5fbf; --accent-soft:#e7effb; --warn:#b3261e; --ok:#1e7a3d; --hl:#fff6d6;
+  --r1:#7a3fb0; --r2:#0f7c86; --etc:#7a6a2f;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#15181b; --panel:#1d2126; --ink:#e7eaee; --muted:#9aa5b1; --line:#323841;
+    --accent:#7fb0ff; --accent-soft:#22324a; --warn:#ff8a80; --ok:#7fd49a; --hl:#3a3420;
+    --r1:#c49cf0; --r2:#6fd0d8; --etc:#d8c483;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif}
+button,select,input,textarea{font:inherit;color:inherit}
+button{white-space:nowrap;cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:5px 10px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.danger{color:var(--warn)}
+button.small{padding:2px 8px;font-size:12px}
+select,input[type=text],input[type=date]{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 6px}
+textarea{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:6px 8px;resize:vertical;min-height:34px;overflow:hidden}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+header.top{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding-top:10px;padding-bottom:10px}
+header h1{font-size:17px;margin:0}
+header .sub{color:var(--muted);font-size:12px}
+.grow{flex:1}
+.people{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.chip{white-space:nowrap;display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:12px;color:var(--muted)}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.chip.on .dot{background:var(--ok)}
+.chip.me{border-color:var(--accent);color:var(--ink)}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;border-top:1px solid var(--line)}
+nav.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 12px;white-space:nowrap}
+nav.tabs button.active{border-bottom-color:var(--accent);color:var(--accent);font-weight:600}
+main{padding:16px 0 60px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.bar .count{color:var(--muted);font-size:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.card.done{opacity:.75}
+.card-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.code{font-weight:700;font-size:12px;padding:2px 8px;border-radius:6px;color:#fff}
+.code.R1{background:var(--r1)} .code.R2{background:var(--r2)} .code.etc{background:var(--etc)}
+.topic{flex:1;min-width:220px;font-weight:600;border:1px solid transparent;background:transparent;padding:3px 6px;border-radius:6px}
+.topic:hover{border-color:var(--line)}
+.meta{color:var(--muted);font-size:12px}
+.grid{display:grid;grid-template-columns:150px 1fr;gap:6px 12px;margin-top:10px;align-items:start}
+.grid > label{color:var(--muted);font-size:12px;padding-top:7px}
+.grid > label.key{color:var(--ink);font-weight:600}
+.key-field textarea{background:var(--hl)}
+details.src{margin-top:8px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--bg)}
+details.src summary{cursor:pointer;color:var(--muted);font-size:12px}
+.pre{white-space:pre-wrap;margin:6px 0 2px}
+.comments{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.cmt{padding:4px 0;border-bottom:1px solid var(--line)}
+.cmt:last-child{border-bottom:0}
+.cmt .who{font-weight:600;font-size:12px}
+.cmt .txt{white-space:pre-wrap}
+.cmt-new{display:flex;gap:6px;margin-top:6px;align-items:flex-start}
+.cmt-new textarea{min-height:34px}
+table.t{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+table.t th,table.t td{border-bottom:1px solid var(--line);padding:6px;vertical-align:top;text-align:left}
+table.t th{font-size:12px;color:var(--muted);background:var(--bg);white-space:nowrap}
+table.t textarea{min-height:32px}
+.center{max-width:520px;margin:12vh auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:28px;text-align:center}
+.center h2{margin-top:0}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:20;max-width:90vw}
+.badge-remote{color:var(--warn);font-size:11px;margin-left:6px}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:30;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--panel);border-radius:10px;max-width:900px;width:100%;max-height:85vh;display:flex;flex-direction:column;padding:14px;gap:8px}
+.modal textarea{flex:1;min-height:50vh;overflow:auto;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.muted{color:var(--muted)}
+.stat{display:inline-block;margin-right:10px;font-size:12px}
+@media (max-width:720px){ .grid{grid-template-columns:1fr} .grid > label{padding-top:0} }
+</style>
+</head>
+<body>
+<div id="app"><div class="center"><p>불러오는 중입니다…</p></div></div>
+<script type="module">
+import { initializeApp } from "fb/app";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "fb/auth";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc, collection, query, orderBy, limit, onSnapshot, serverTimestamp, writeBatch } from "fb/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCYm8PxEj-jV-T1bDmInFaxrV-F9Cum-oE",
+  authDomain: "ald-review-revision.firebaseapp.com",
+  projectId: "ald-review-revision",
+  storageBucket: "ald-review-revision.firebasestorage.app",
+  messagingSenderId: "50934672736",
+  appId: "1:50934672736:web:605fb6dd34ceb0d8738205"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+const STATUS = ["미착수", "논의 중", "방향 확정", "작성 중", "검토 대기", "완료", "반영 안 함"];
+const J_STATUS = ["후보", "검토 중", "유력", "제외", "확정"];
+const TABS = [
+  ["items", "심사평 대응"], ["tasks", "할 일·일정"], ["journals", "후보 저널"],
+  ["docs", "원문·자료"], ["log", "수정 기록"], ["members", "멤버"]
+];
+const ITEM_FIELDS = [
+  ["location", "제출본 위치", false],
+  ["current", "제출본 현재 서술", false],
+  ["overlap", "겹치는 지적", false],
+  ["response", "대응 방향", true],
+  ["refs", "추가로 필요한 문헌·자료", false],
+  ["note", "메모", false]
+];
+
+const S = {
+  user: null, me: null, isAdmin: false, ready: false,
+  members: [], items: [], comments: {}, tasks: [], journals: [], docs: [], log: [],
+  tab: lsGet("tab") || "items",
+  f: { reviewer: "", status: "", owner: "", q: "" },
+  open: new Set(JSON.parse(lsGet("open") || "[]")),
+  unsubs: [], commentUnsubs: {},
+  dirty: {},      // key -> local value while editing
+  focusVal: {},   // key -> value at focus time
+  remoteChanged: new Set()
+};
+
+function lsGet(k) { try { return localStorage.getItem("rv_" + k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem("rv_" + k, v); } catch (e) {} }
+
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k === "text") el.textContent = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "value") el.value = v;
+    else if (k === "checked") el.checked = !!v;
+    else if (k === "dataset") Object.assign(el.dataset, v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat(Infinity)) {
+    if (c === null || c === undefined || c === false) continue;
+    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return el;
+}
+
+function toast(msg, ms = 2600) {
+  const t = h("div", { class: "toast", text: msg });
+  document.body.append(t);
+  setTimeout(() => t.remove(), ms);
+}
+
+function tsDate(ts) {
+  if (!ts) return null;
+  if (typeof ts.toDate === "function") return ts.toDate();
+  if (ts instanceof Date) return ts;
+  return null;
+}
+function fmt(ts) {
+  const d = tsDate(ts);
+  if (!d) return "";
+  const p = n => String(n).padStart(2, "0");
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function myName() {
+  return (S.me && S.me.name) || (S.user && (S.user.displayName || (S.user.email || "").split("@")[0])) || "?";
+}
+function snapList(snap) {
+  return snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }));
+}
+function errMsg(e) {
+  const c = (e && e.code) || "";
+  if (c.includes("permission-denied")) return "권한이 없습니다. 관리자 승인이 필요할 수 있습니다.";
+  if (c.includes("unavailable")) return "서버에 연결되지 않았습니다. 네트워크를 확인해 주세요.";
+  return (e && e.message) || String(e);
+}
+function cut(s, n = 300) { s = s == null ? "" : String(s); return s.length > n ? s.slice(0, n) + "…" : s; }
+
+async function writeLog(action, target, field, before, after) {
+  try {
+    await addDoc(collection(db, "log"), {
+      at: serverTimestamp(), uid: S.user.uid, name: myName(),
+      action, target: target || "", field: field || "",
+      before: cut(before), after: cut(after)
+    });
+  } catch (e) { console.warn("log failed", e); }
+}
+
+/* ---------- saving ---------- */
+const timers = {};
+function refFor(path) { return doc(db, ...path.split("/")); }
+async function saveNow(path, field, value) {
+  const data = path.startsWith("members/") ? { [field]: value } : { [field]: value, updatedAt: serverTimestamp(), updatedBy: myName() };
+  await updateDoc(refFor(path), data);
+}
+function scheduleSave(key, path, field, value) {
+  S.dirty[key] = value;
+  clearTimeout(timers[key]);
+  timers[key] = setTimeout(async () => {
+    try { await saveNow(path, field, value); }
+    catch (e) { toast("저장 실패: " + errMsg(e)); }
+  }, 900);
+}
+async function flush(key, path, field, value, targetLabel, fieldLabel) {
+  clearTimeout(timers[key]);
+  const before = S.focusVal[key];
+  try {
+    if (before !== value) {
+      await saveNow(path, field, value);
+      await writeLog("수정", targetLabel, fieldLabel, before, value);
+    }
+  } catch (e) { toast("저장 실패: " + errMsg(e)); }
+  delete S.dirty[key];
+  delete S.focusVal[key];
+  S.remoteChanged.delete(key);
+}
+
+function autosize(el) { el.style.height = "auto"; el.style.height = (el.scrollHeight + 2) + "px"; }
+
+function editArea(path, field, remoteVal, targetLabel, fieldLabel, opts = {}) {
+  const key = path + "#" + field;
+  const local = key in S.dirty ? S.dirty[key] : (remoteVal || "");
+  const ta = h("textarea", {
+    class: "auto", value: local, placeholder: opts.placeholder || "", rows: 1, dataset: { key },
+    onfocus: e => { if (!(key in S.focusVal)) S.focusVal[key] = remoteVal || ""; },
+    oninput: e => { autosize(e.target); scheduleSave(key, path, field, e.target.value); },
+    onblur: e => { if (S.rendering || !e.target.isConnected) return; flush(key, path, field, e.target.value, targetLabel, fieldLabel); }
+  });
+  if (key in S.dirty && (remoteVal || "") !== (S.focusVal[key] ?? "") && (remoteVal || "") !== S.dirty[key]) S.remoteChanged.add(key);
+  return ta;
+}
+function editInput(path, field, remoteVal, targetLabel, fieldLabel, opts = {}) {
+  const key = path + "#" + field;
+  const local = key in S.dirty ? S.dirty[key] : (remoteVal || "");
+  return h("input", {
+    type: opts.type || "text", class: opts.cls || "", value: local, placeholder: opts.placeholder || "", dataset: { key },
+    style: opts.style || null,
+    onfocus: () => { if (!(key in S.focusVal)) S.focusVal[key] = remoteVal || ""; },
+    oninput: e => scheduleSave(key, path, field, e.target.value),
+    onchange: e => { if (opts.type === "date") flush(key, path, field, e.target.value, targetLabel, fieldLabel); },
+    onblur: e => { if (S.rendering || !e.target.isConnected) return; flush(key, path, field, e.target.value, targetLabel, fieldLabel); }
+  });
+}
+function selectBox(options, current, onpick, allowBlank) {
+  const sel = h("select", { onchange: e => onpick(e.target.value) });
+  const opts = [...options];
+  if (current && !opts.includes(current)) opts.push(current);
+  if (allowBlank) sel.append(h("option", { value: "", text: allowBlank }));
+  for (const o of opts) sel.append(h("option", { value: o, text: o, selected: o === current ? true : null }));
+  sel.value = current || "";
+  return sel;
+}
+async function setField(path, field, value, targetLabel, fieldLabel, before) {
+  try {
+    await saveNow(path, field, value);
+    await writeLog("수정", targetLabel, fieldLabel, before, value);
+  } catch (e) { toast("저장 실패: " + errMsg(e)); }
+}
+function confirmButton(label, onconfirm, cls = "small danger") {
+  let armed = false, t;
+  const b = h("button", { class: cls, text: label, onclick: async () => {
+    if (!armed) { armed = true; b.textContent = "한 번 더 누르면 " + label; t = setTimeout(() => { armed = false; b.textContent = label; }, 3000); return; }
+    clearTimeout(t); await onconfirm();
+  } });
+  return b;
+}
+
+function ownerOptions() {
+  const names = S.members.filter(m => m.approved).map(m => m.name).filter(Boolean);
+  return [...new Set([...names, "공동", "미정"])];
+}
+
+/* ---------- auth flow ---------- */
+function renderLogin(msg) {
+  const app = document.getElementById("app");
+  app.replaceChildren(h("div", { class: "center" },
+    h("h2", { text: "리젝 대응 작업실" }),
+    h("p", { class: "muted", text: "3D DRAM ALD 리뷰 (MS #APR26-RV-01180) 팀 공동 작업 페이지입니다." }),
+    msg ? h("p", { text: msg }) : null,
+    h("button", { class: "primary", text: "Google 계정으로 로그인", onclick: async () => {
+      try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+      catch (e) { toast("로그인 실패: " + errMsg(e)); }
+    } })
+  ));
+}
+function renderPending() {
+  const app = document.getElementById("app");
+  app.replaceChildren(h("div", { class: "center" },
+    h("h2", { text: "승인 대기 중" }),
+    h("p", { text: `${S.user.email} 계정으로 접근을 요청했습니다. 관리자가 승인하면 이 화면이 자동으로 바뀝니다.` }),
+    h("button", { text: "로그아웃", onclick: () => signOut(auth) })
+  ));
+}
+
+async function enter(user) {
+  S.user = user;
+  S.isAdmin = false;
+  try { await getDoc(doc(db, "admin", "probe")); S.isAdmin = true; } catch (e) { S.isAdmin = false; }
+  const meRef = doc(db, "members", user.uid);
+  let snap;
+  try { snap = await getDoc(meRef); } catch (e) { renderLogin("회원 정보를 읽지 못했습니다: " + errMsg(e)); return; }
+  if (!snap.exists()) {
+    const base = { uid: user.uid, email: user.email || "", name: user.displayName || (user.email || "").split("@")[0], photo: user.photoURL || "", requestedAt: serverTimestamp(), lastSeen: serverTimestamp() };
+    try { await setDoc(meRef, { ...base, approved: true, role: S.isAdmin ? "admin" : "member" }); }
+    catch (e) {
+      try { await setDoc(meRef, { ...base, approved: false, role: "member" }); }
+      catch (e2) { renderLogin("접근 요청에 실패했습니다: " + errMsg(e2)); return; }
+    }
+  }
+  const unsubMe = onSnapshot(meRef, s => {
+    S.me = s.exists() ? { id: s.id, ...s.data() } : null;
+    const ok = S.isAdmin || (S.me && S.me.approved);
+    if (ok && !S.ready) { S.ready = true; startData(); }
+    else if (!ok) { S.ready = false; stopData(); renderPending(); }
+    else scheduleRender();
+  }, e => renderLogin("접근 권한을 확인하지 못했습니다: " + errMsg(e)));
+  S.unsubs.push(unsubMe);
+}
+
+function stopData() {
+  for (const u of S.unsubs.splice(1)) u();
+  for (const k of Object.keys(S.commentUnsubs)) { S.commentUnsubs[k](); delete S.commentUnsubs[k]; }
+  clearInterval(S.beat);
+}
+
+function startData() {
+  const listen = (q, key, after) => S.unsubs.push(onSnapshot(q, snap => { S[key] = snapList(snap); if (after) after(); scheduleRender(); },
+    e => toast(key + " 불러오기 실패: " + errMsg(e))));
+  listen(collection(db, "members"), "members");
+  listen(query(collection(db, "items"), orderBy("order")), "items", syncCommentListeners);
+  listen(query(collection(db, "tasks"), orderBy("order")), "tasks");
+  listen(query(collection(db, "journals"), orderBy("createdAt")), "journals");
+  listen(query(collection(db, "docs"), orderBy("order")), "docs");
+  listen(query(collection(db, "log"), orderBy("at", "desc"), limit(300)), "log");
+  const beat = () => updateDoc(doc(db, "members", S.user.uid), { lastSeen: serverTimestamp() }).catch(() => {});
+  beat();
+  S.beat = setInterval(beat, 60000);
+  window.__importSeed = importSeed;
+  window.__exportAll = exportAll;
+  scheduleRender();
+}
+
+function syncCommentListeners() {
+  const ids = new Set(S.items.map(i => i.id));
+  for (const id of ids) {
+    if (S.commentUnsubs[id]) continue;
+    S.commentUnsubs[id] = onSnapshot(query(collection(db, "items", id, "comments"), orderBy("createdAt")),
+      snap => { S.comments[id] = snapList(snap); scheduleRender(); },
+      e => console.warn("comments", e));
+  }
+  for (const id of Object.keys(S.commentUnsubs)) if (!ids.has(id)) { S.commentUnsubs[id](); delete S.commentUnsubs[id]; delete S.comments[id]; }
+}
+
+onAuthStateChanged(auth, user => {
+  for (const u of S.unsubs.splice(0)) u();
+  stopData();
+  S.ready = false; S.me = null;
+  if (!user) { S.user = null; renderLogin(); return; }
+  enter(user);
+});
+
+/* ---------- rendering ---------- */
+let rafPending = false, deferTimer = null, composing = false, lastInput = 0;
+document.addEventListener("compositionstart", () => { composing = true; }, true);
+document.addEventListener("compositionend", () => { composing = false; lastInput = Date.now(); }, true);
+document.addEventListener("input", () => { lastInput = Date.now(); }, true);
+document.addEventListener("focusout", () => { if (deferTimer) { clearTimeout(deferTimer); deferTimer = null; setTimeout(scheduleRender, 50); } }, true);
+function userIsTyping() {
+  const a = document.activeElement;
+  if (!a || !a.dataset || !a.dataset.key) return false;
+  return composing || (Date.now() - lastInput < 2500);
+}
+function scheduleRender() {
+  if (rafPending) return;
+  if (userIsTyping()) {
+    if (!deferTimer) deferTimer = setTimeout(() => { deferTimer = null; scheduleRender(); }, 1200);
+    return;
+  }
+  rafPending = true;
+  requestAnimationFrame(() => { rafPending = false; if (S.ready) render(); });
+}
+
+function render() {
+  const active = document.activeElement;
+  const activeKey = active && active.dataset ? active.dataset.key : null;
+  const selStart = active && "selectionStart" in active ? active.selectionStart : null;
+  const selEnd = active && "selectionEnd" in active ? active.selectionEnd : null;
+  const scrollY = window.scrollY;
+
+  const app = document.getElementById("app");
+  const header = renderHeader(), body = h("main", null, h("div", { class: "wrap" }, renderTab()));
+  S.rendering = true;
+  try { app.replaceChildren(header, body); } finally { S.rendering = false; }
+
+  document.querySelectorAll("textarea.auto").forEach(autosize);
+  if (activeKey) {
+    const el = document.querySelector(`[data-key="${CSS.escape(activeKey)}"]`);
+    if (el) { el.focus({ preventScroll: true }); try { if (selStart !== null) el.setSelectionRange(selStart, selEnd); } catch (e) {} }
+  }
+  window.scrollTo(0, scrollY);
+}
+
+function isOnline(m) { const d = tsDate(m.lastSeen); return d && (Date.now() - d.getTime() < 3 * 60 * 1000); }
+
+function renderHeader() {
+  const people = S.members.filter(m => m.approved).map(m =>
+    h("span", { class: "chip" + (isOnline(m) ? " on" : "") + (m.uid === S.user.uid ? " me" : ""), title: m.email },
+      h("span", { class: "dot" }), m.name + (m.uid === S.user.uid ? " (나)" : "")));
+  const nameKey = "members/" + S.user.uid + "#name";
+  const nameBox = h("span", { class: "people" }, h("span", { class: "muted", text: "내 표시 이름" }),
+    editInput("members/" + S.user.uid, "name", S.me ? S.me.name : "", "멤버", "표시 이름", { style: "width:110px" }));
+  const tabs = h("nav", { class: "tabs wrap" }, TABS.filter(([k]) => k !== "members" || S.isAdmin).map(([k, label]) => {
+    let extra = "";
+    if (k === "members") { const p = S.members.filter(m => !m.approved).length; if (p) extra = ` (${p})`; }
+    return h("button", { class: S.tab === k ? "active" : "", text: label + extra, onclick: () => { S.tab = k; lsSet("tab", k); render(); } });
+  }));
+  return h("header", { class: "top" },
+    h("div", { class: "wrap" },
+      h("div", null, h("h1", { text: "리젝 대응 작업실" }), h("div", { class: "sub", text: "3D DRAM ALD 리뷰 · APR MS #APR26-RV-01180 · 2026-09-11 Reject" })),
+      h("div", { class: "people grow" }, people),
+      nameBox,
+      h("button", { text: "AI용 복사", title: "심사평·할 일·저널을 마크다운으로 복사", onclick: () => copyText(buildMarkdown(false)) }),
+      h("button", { text: "AI용 복사(자료 포함)", onclick: () => copyText(buildMarkdown(true)) }),
+      h("button", { text: "백업 내려받기", onclick: exportAll }),
+      h("button", { text: "로그아웃", onclick: () => signOut(auth) })
+    ),
+    tabs
+  );
+}
+
+function renderTab() {
+  switch (S.tab) {
+    case "tasks": return renderTasks();
+    case "journals": return renderJournals();
+    case "docs": return renderDocs();
+    case "log": return renderLog();
+    case "members": return S.isAdmin ? renderMembers() : renderItems();
+    default: return renderItems();
+  }
+}
+
+function itemCode(it) { return it.code || it.reviewer || "기타"; }
+function reviewerClass(it) { return it.reviewer === "R1" ? "R1" : it.reviewer === "R2" ? "R2" : "etc"; }
+
+function renderItems() {
+  const f = S.f;
+  const q = f.q.trim().toLowerCase();
+  const list = S.items.filter(it =>
+    (!f.reviewer || it.reviewer === f.reviewer) &&
+    (!f.status || (it.status || "미착수") === f.status) &&
+    (!f.owner || (it.owner || "") === f.owner) &&
+    (!q || JSON.stringify(it).toLowerCase().includes(q))
+  );
+  const counts = {};
+  for (const it of S.items) { const s = it.status || "미착수"; counts[s] = (counts[s] || 0) + 1; }
+  const bar = h("div", { class: "bar" },
+    selectBox(["R1", "R2", "기타"], f.reviewer, v => { f.reviewer = v; render(); }, "심사위원 전체"),
+    selectBox(STATUS, f.status, v => { f.status = v; render(); }, "상태 전체"),
+    selectBox(ownerOptions(), f.owner, v => { f.owner = v; render(); }, "담당 전체"),
+    h("input", { type: "text", placeholder: "검색", value: f.q, dataset: { key: "filter#q" }, oninput: e => { f.q = e.target.value; render(); } }),
+    h("span", { class: "count", text: `${list.length} / ${S.items.length}건` }),
+    h("span", { class: "grow" }),
+    h("button", { text: "모두 펼치기", onclick: () => { S.items.forEach(i => { S.open.add(i.id + ":orig"); S.open.add(i.id + ":tr"); }); saveOpen(); render(); } }),
+    h("button", { text: "모두 접기", onclick: () => { S.open.clear(); saveOpen(); render(); } }),
+    h("button", { text: "항목 추가", onclick: addItem })
+  );
+  const stats = h("div", { class: "bar" }, STATUS.map(s => h("span", { class: "stat", text: `${s} ${counts[s] || 0}` })));
+  if (!S.items.length) return [bar, h("div", { class: "card", text: "아직 항목이 없습니다." })];
+  return [bar, stats, list.map(renderItemCard)];
+}
+
+function saveOpen() { lsSet("open", JSON.stringify([...S.open])); }
+function srcBlock(id, part, title, text) {
+  const key = id + ":" + part;
+  const d = h("details", { class: "src", open: S.open.has(key) ? true : null,
+    ontoggle: e => { if (e.target.open) S.open.add(key); else S.open.delete(key); saveOpen(); } },
+    h("summary", { text: title }), h("div", { class: "pre", text: text || "(비어 있음)" }));
+  return d;
+}
+
+function renderItemCard(it) {
+  const path = "items/" + it.id;
+  const label = itemCode(it);
+  const st = it.status || "미착수";
+  const head = h("div", { class: "card-head" },
+    h("span", { class: "code " + reviewerClass(it), text: label }),
+    editInput(path, "topic", it.topic, label, "주제", { cls: "topic", placeholder: "주제" }),
+    h("span", { class: "muted", text: "상태" }),
+    selectBox(STATUS, st, v => setField(path, "status", v, label, "상태", st)),
+    h("span", { class: "muted", text: "담당" }),
+    selectBox(ownerOptions(), it.owner || "", v => setField(path, "owner", v, label, "담당", it.owner || ""), "미지정"),
+    h("button", { class: "small", text: "이 항목 AI용 복사", onclick: () => copyText(itemMarkdown(it)) })
+  );
+  const grid = h("div", { class: "grid" });
+  for (const [field, flabel, isKey] of ITEM_FIELDS) {
+    const key = path + "#" + field;
+    grid.append(h("label", { class: isKey ? "key" : "" }, flabel, S.remoteChanged.has(key) ? h("span", { class: "badge-remote", text: "다른 사람이 수정함" }) : null));
+    grid.append(h("div", { class: isKey ? "key-field" : "" }, editArea(path, field, it[field], label, flabel,
+      { placeholder: isKey ? "팀 논의로 정한 대응 방향" : "" })));
+  }
+  const cmts = S.comments[it.id] || [];
+  const newKey = "newc#" + it.id;
+  const ctext = h("textarea", { class: "auto", placeholder: "댓글 (Ctrl+Enter로 등록)", rows: 1, dataset: { key: newKey }, value: S.dirty[newKey] || "",
+    oninput: e => { S.dirty[newKey] = e.target.value; autosize(e.target); },
+    onkeydown: e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); postComment(it, e.target); } } });
+  const comments = h("div", { class: "comments" },
+    h("div", { class: "meta", text: `댓글 ${cmts.length}` }),
+    cmts.map(c => h("div", { class: "cmt" },
+      h("span", { class: "who", text: c.name }), " ", h("span", { class: "meta", text: fmt(c.createdAt) }), " ",
+      (c.uid === S.user.uid || S.isAdmin) ? confirmButton("삭제", () => deleteComment(it, c)) : null,
+      h("div", { class: "txt", text: c.text }))),
+    h("div", { class: "cmt-new" }, ctext, h("button", { text: "등록", onclick: () => postComment(it, ctext) }))
+  );
+  const foot = h("div", { class: "meta", style: "margin-top:6px" },
+    it.updatedBy ? `마지막 수정 ${it.updatedBy} · ${fmt(it.updatedAt)}` : "",
+    S.isAdmin ? h("span", { style: "margin-left:10px" }, confirmButton("항목 삭제", () => deleteItem(it))) : null);
+  return h("div", { class: "card" + (st === "완료" ? " done" : "") },
+    head,
+    srcBlock(it.id, "orig", "심사평 원문", it.original),
+    srcBlock(it.id, "tr", "한글 번역", it.translation),
+    grid, comments, foot);
+}
+
+async function postComment(it, ta) {
+  const text = ta.value.trim();
+  if (!text) return;
+  try {
+    await addDoc(collection(db, "items", it.id, "comments"), { text, uid: S.user.uid, name: myName(), createdAt: serverTimestamp() });
+    delete S.dirty["newc#" + it.id];
+    ta.value = "";
+    await writeLog("댓글", itemCode(it), "", "", text);
+  } catch (e) { toast("댓글 등록 실패: " + errMsg(e)); }
+}
+async function deleteComment(it, c) {
+  try { await deleteDoc(doc(db, "items", it.id, "comments", c.id)); await writeLog("댓글 삭제", itemCode(it), "", c.text, ""); }
+  catch (e) { toast("삭제 실패: " + errMsg(e)); }
+}
+async function addItem() {
+  const order = Math.max(0, ...S.items.map(i => i.order || 0)) + 1;
+  try {
+    await addDoc(collection(db, "items"), { order, reviewer: "기타", code: "추가", topic: "새 항목", original: "", translation: "", status: "미착수", owner: "", createdAt: serverTimestamp(), updatedAt: serverTimestamp(), updatedBy: myName() });
+    await writeLog("항목 추가", "추가", "", "", "새 항목");
+  } catch (e) { toast("추가 실패: " + errMsg(e)); }
+}
+async function deleteItem(it) {
+  try { await deleteDoc(doc(db, "items", it.id)); await writeLog("항목 삭제", itemCode(it), "", it.topic, ""); }
+  catch (e) { toast("삭제 실패: " + errMsg(e)); }
+}
+
+/* tasks */
+function renderTasks() {
+  const addBtn = h("button", { text: "할 일 추가", onclick: async () => {
+    const order = Math.max(0, ...S.tasks.map(t => t.order || 0)) + 1;
+    try { await addDoc(collection(db, "tasks"), { order, text: "", owner: "", due: "", done: false, note: "", createdAt: serverTimestamp(), updatedAt: serverTimestamp(), updatedBy: myName() }); await writeLog("할 일 추가", "할 일", "", "", ""); }
+    catch (e) { toast("추가 실패: " + errMsg(e)); }
+  } });
+  const rows = S.tasks.map(t => {
+    const path = "tasks/" + t.id;
+    const label = "할 일: " + cut(t.text, 30);
+    return h("tr", null,
+      h("td", null, h("input", { type: "checkbox", checked: !!t.done, onchange: e => setField(path, "done", e.target.checked, label, "완료", !!t.done) })),
+      h("td", { style: "min-width:260px" }, editArea(path, "text", t.text, label, "내용")),
+      h("td", null, selectBox(ownerOptions(), t.owner || "", v => setField(path, "owner", v, label, "담당", t.owner || ""), "미지정")),
+      h("td", null, editInput(path, "due", t.due, label, "기한", { type: "date" })),
+      h("td", { style: "min-width:200px" }, editArea(path, "note", t.note, label, "메모")),
+      h("td", { class: "meta" }, t.updatedBy ? `${t.updatedBy}\n${fmt(t.updatedAt)}` : ""),
+      h("td", null, confirmButton("삭제", async () => { try { await deleteDoc(doc(db, "tasks", t.id)); await writeLog("할 일 삭제", label, "", t.text, ""); } catch (e) { toast(errMsg(e)); } }))
+    );
+  });
+  return [h("div", { class: "bar" }, h("span", { class: "count", text: `완료 ${S.tasks.filter(t => t.done).length} / ${S.tasks.length}` }), h("span", { class: "grow" }), addBtn),
+    h("table", { class: "t" }, h("thead", null, h("tr", null, ["완료", "내용", "담당", "기한", "메모", "최근 수정", ""].map(x => h("th", { text: x })))), h("tbody", null, rows))];
+}
+
+/* journals */
+const J_FIELDS = [["name", "저널", 160], ["publisher", "출판사", 110], ["scope", "분야·범위", 160], ["format", "리뷰 형식·요건", 180], ["limits", "분량·그림 제한", 150], ["proposer", "제안자", 80], ["note", "메모", 180]];
+function renderJournals() {
+  const addBtn = h("button", { text: "저널 추가", onclick: async () => {
+    try { await addDoc(collection(db, "journals"), { name: "", publisher: "", scope: "", format: "", limits: "", proposer: myName(), status: "후보", note: "", createdAt: serverTimestamp(), updatedAt: serverTimestamp(), updatedBy: myName() }); await writeLog("저널 추가", "후보 저널", "", "", ""); }
+    catch (e) { toast("추가 실패: " + errMsg(e)); }
+  } });
+  const rows = S.journals.map(j => {
+    const path = "journals/" + j.id;
+    const label = "저널: " + (j.name || "(이름 없음)");
+    return h("tr", null,
+      J_FIELDS.map(([f, fl, w]) => h("td", { style: `min-width:${w}px` }, editArea(path, f, j[f], label, fl))),
+      h("td", null, selectBox(J_STATUS, j.status || "후보", v => setField(path, "status", v, label, "상태", j.status || ""))),
+      h("td", null, confirmButton("삭제", async () => { try { await deleteDoc(doc(db, "journals", j.id)); await writeLog("저널 삭제", label, "", j.name, ""); } catch (e) { toast(errMsg(e)); } }))
+    );
+  });
+  return [h("div", { class: "bar" }, h("span", { class: "count", text: `${S.journals.length}개` }), h("span", { class: "grow" }), addBtn),
+    h("div", { style: "overflow-x:auto" }, h("table", { class: "t" }, h("thead", null, h("tr", null, [...J_FIELDS.map(x => x[1]), "상태", ""].map(x => h("th", { text: x })))), h("tbody", null, rows)))];
+}
+
+/* docs */
+function renderDocs() {
+  const addBtn = h("button", { text: "자료 추가", onclick: async () => {
+    const order = Math.max(0, ...S.docs.map(d => d.order || 0)) + 1;
+    try { await addDoc(collection(db, "docs"), { order, title: "새 자료", body: "", createdAt: serverTimestamp(), updatedAt: serverTimestamp(), updatedBy: myName() }); await writeLog("자료 추가", "원문·자료", "", "", ""); }
+    catch (e) { toast("추가 실패: " + errMsg(e)); }
+  } });
+  return [h("div", { class: "bar" }, h("span", { class: "count", text: `${S.docs.length}개` }), h("span", { class: "grow" }), addBtn),
+    S.docs.map(d => {
+      const path = "docs/" + d.id;
+      const key = d.id + ":doc";
+      return h("div", { class: "card" },
+        h("div", { class: "card-head" }, editInput(path, "title", d.title, "자료", "제목", { cls: "topic" }),
+          h("span", { class: "meta", text: d.updatedBy ? `마지막 수정 ${d.updatedBy} · ${fmt(d.updatedAt)}` : "" }),
+          S.isAdmin ? confirmButton("삭제", async () => { try { await deleteDoc(doc(db, "docs", d.id)); await writeLog("자료 삭제", d.title, "", "", ""); } catch (e) { toast(errMsg(e)); } }) : null),
+        h("details", { class: "src", open: S.open.has(key) ? true : null, ontoggle: e => { if (e.target.open) S.open.add(key); else S.open.delete(key); saveOpen(); if (e.target.open) e.target.querySelectorAll("textarea.auto").forEach(autosize); } },
+          h("summary", { text: "내용 보기·편집" }), editArea(path, "body", d.body, "자료: " + d.title, "본문")));
+    })];
+}
+
+/* log */
+function renderLog() {
+  return h("table", { class: "t" },
+    h("thead", null, h("tr", null, ["시각", "누가", "무엇을", "대상", "칸", "이전", "이후"].map(x => h("th", { text: x })))),
+    h("tbody", null, S.log.map(l => h("tr", null,
+      h("td", { class: "meta", text: fmt(l.at) }), h("td", { text: l.name }), h("td", { text: l.action }),
+      h("td", { text: l.target }), h("td", { text: l.field }),
+      h("td", { class: "pre muted", text: l.before }), h("td", { class: "pre", text: l.after })))));
+}
+
+/* members */
+function renderMembers() {
+  const rows = S.members.slice().sort((a, b) => (a.approved === b.approved ? 0 : a.approved ? 1 : -1)).map(m => h("tr", null,
+    h("td", { text: m.name }), h("td", { text: m.email }),
+    h("td", { text: m.approved ? "승인됨" : "승인 대기" }),
+    h("td", { class: "meta", text: fmt(m.lastSeen) }),
+    h("td", null, m.uid === S.user.uid ? h("span", { class: "muted", text: "나" }) :
+      m.approved
+        ? confirmButton("승인 해제", async () => { try { await updateDoc(doc(db, "members", m.id), { approved: false }); await writeLog("승인 해제", m.email, "", "", ""); } catch (e) { toast(errMsg(e)); } })
+        : h("span", null,
+            h("button", { class: "small primary", text: "승인", onclick: async () => { try { await updateDoc(doc(db, "members", m.id), { approved: true }); await writeLog("승인", m.email, "", "", ""); } catch (e) { toast(errMsg(e)); } } }), " ",
+            confirmButton("거절", async () => { try { await deleteDoc(doc(db, "members", m.id)); await writeLog("거절", m.email, "", "", ""); } catch (e) { toast(errMsg(e)); } })))
+  ));
+  return [h("p", { class: "muted", text: "보안 규칙에 등록된 이메일은 로그인하면 바로 승인됩니다. 그 밖의 계정은 여기서 승인해야 합니다. 승인 해제된 등록 이메일 계정은 규칙상 여전히 접근할 수 있습니다." }),
+    h("table", { class: "t" }, h("thead", null, h("tr", null, ["이름", "이메일", "상태", "최근 접속", ""].map(x => h("th", { text: x })))), h("tbody", null, rows))];
+}
+
+/* ---------- export / AI copy ---------- */
+function itemMarkdown(it) {
+  const L = [];
+  L.push(`### ${itemCode(it)} ${it.topic || ""}`);
+  L.push(`- 상태: ${it.status || "미착수"} / 담당: ${it.owner || "미지정"}`);
+  L.push(`- 심사평 원문:\n${indent(it.original)}`);
+  L.push(`- 한글 번역:\n${indent(it.translation)}`);
+  for (const [f, fl] of ITEM_FIELDS) L.push(`- ${fl}:\n${indent(it[f])}`);
+  const cm = S.comments[it.id] || [];
+  if (cm.length) { L.push(`- 댓글:`); for (const c of cm) L.push(`  - ${c.name} (${fmt(c.createdAt)}): ${String(c.text).replace(/\n/g, " ")}`); }
+  return L.join("\n");
+}
+function indent(s) { s = (s || "").trim(); return s ? s.split("\n").map(x => "  > " + x).join("\n") : "  > (비어 있음)"; }
+function buildMarkdown(withDocs) {
+  const L = [];
+  L.push(`# 리젝 대응 작업실 현황 (${new Date().toLocaleString("ko-KR")} 기준)`);
+  L.push(`원고: Atomic-layer-deposited metal oxide semiconductors for three-dimensional dynamic random-access memory (APR MS #APR26-RV-01180, 2026-09-11 Reject)`);
+  L.push(`\n## 심사평 대응 (${S.items.length}건)`);
+  for (const it of S.items) L.push("\n" + itemMarkdown(it));
+  L.push(`\n## 할 일·일정`);
+  for (const t of S.tasks) L.push(`- [${t.done ? "x" : " "}] ${(t.text || "").replace(/\n/g, " ")} (담당: ${t.owner || "미지정"}, 기한: ${t.due || "-"})${t.note ? " — " + t.note.replace(/\n/g, " ") : ""}`);
+  L.push(`\n## 후보 저널`);
+  for (const j of S.journals) L.push(`- ${j.name || "(이름 없음)"} [${j.status || "후보"}] 출판사: ${j.publisher || "-"} / 범위: ${j.scope || "-"} / 형식: ${j.format || "-"} / 제한: ${j.limits || "-"} / 제안: ${j.proposer || "-"} / 메모: ${j.note || "-"}`);
+  if (withDocs) { L.push(`\n## 원문·자료`); for (const d of S.docs) L.push(`\n### ${d.title}\n${d.body || ""}`); }
+  return L.join("\n");
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); toast(`복사했습니다 (${text.length.toLocaleString()}자). AI 대화창에 붙여 넣으세요.`); }
+  catch (e) { showText(text); }
+}
+function showText(text) {
+  const ta = h("textarea", { value: text, readonly: true });
+  const bg = h("div", { class: "modal-bg", onclick: e => { if (e.target === bg) bg.remove(); } },
+    h("div", { class: "modal" }, h("div", { class: "bar" }, h("strong", { text: "자동 복사가 막혀 있습니다. 아래 내용을 선택해 복사하세요." }), h("span", { class: "grow" }), h("button", { text: "닫기", onclick: () => bg.remove() })), ta));
+  document.body.append(bg);
+  ta.focus(); ta.select();
+}
+function exportAll() {
+  const data = { exportedAt: new Date().toISOString(), items: S.items.map(i => ({ ...i, comments: S.comments[i.id] || [] })), tasks: S.tasks, journals: S.journals, docs: S.docs, members: S.members.map(m => ({ name: m.name, email: m.email, approved: m.approved })) };
+  const blob = new Blob([JSON.stringify(data, (k, v) => (v && typeof v.toDate === "function") ? v.toDate().toISOString() : v, 2)], { type: "application/json" });
+  const a = h("a", { href: URL.createObjectURL(blob), download: `rejection-workspace-backup-${new Date().toISOString().slice(0, 10)}.json` });
+  document.body.append(a); a.click(); a.remove();
+  return data.items.length;
+}
+
+/* ---------- admin seed import (called from console) ---------- */
+async function importSeed(seed, opts = {}) {
+  if (!S.isAdmin) throw new Error("관리자만 가져올 수 있습니다.");
+  const result = {};
+  for (const coll of ["items", "tasks", "journals", "docs"]) {
+    const rows = seed[coll] || [];
+    if (!rows.length) continue;
+    if (S[coll].length && !opts.force) { result[coll] = "건너뜀(기존 데이터 있음)"; continue; }
+    const batch = writeBatch(db);
+    for (const r of rows) {
+      const { id, ...rest } = r;
+      batch.set(doc(db, coll, id), { ...rest, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), updatedBy: myName() });
+    }
+    await batch.commit();
+    result[coll] = rows.length;
+  }
+  await writeLog("초기 데이터 입력", "전체", "", "", JSON.stringify(result));
+  return result;
+}
+</script>
+</body>
+</html>
