@@ -2,14 +2,14 @@ import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from
 import {
   S, h, db, auth, toast, fmt, tsDate, errMsg, myName, writeLog, snapList, cut, sigOf, keyed, patchChildren,
   scheduleRender, setRenderer, restoreFocus, autosize, editArea, editInput, selectBox, setField, confirmButton,
-  ownerOptions, itemLabel, itemById, reviewerName, lsSet, saveOpen, copyText, STATUS,
+  ownerOptions, itemLabel, itemById, reviewerName, codesOf, codeText, lsSet, saveOpen, copyText, STATUS,
   doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, query, orderBy, limit, onSnapshot,
   serverTimestamp, writeBatch
-} from "./core.js?v=3";
-import { renderMs, unmountMs, M, scrollToBlock, blockLabel, linksForItem, itemShortName, msMarkdownSummary } from "./ms.js?v=3";
-import { renderFiles } from "./files.js?v=3";
-import { renderChat } from "./chat.js?v=3";
-import { plainOf } from "./markup.js?v=3";
+} from "./core.js?v=4";
+import { renderMs, unmountMs, M, scrollToBlock, blockLabel, linksForItem, itemShortName, msMarkdownSummary } from "./ms.js?v=4";
+import { renderFiles } from "./files.js?v=4";
+import { renderChat } from "./chat.js?v=4";
+import { plainOf } from "./markup.js?v=4";
 
 const J_STATUS = ["후보", "검토 중", "유력", "제외", "확정"];
 const TABS = [
@@ -93,6 +93,10 @@ function startData() {
   const beat = () => updateDoc(doc(db, "members", S.user.uid), { lastSeen: serverTimestamp() }).catch(() => {});
   beat();
   S.beat = setInterval(beat, 60000);
+  if (!S.verTimer) {
+    S.verTimer = setInterval(checkVersion, 90000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVersion(); });
+  }
   window.__importSeed = importSeed;
   window.__migrateV2 = migrateV2;
   scheduleRender();
@@ -196,7 +200,26 @@ function renderTab() {
   }
 }
 
+/* ---------- 새 버전 알림 ---------- */
+const APP_V = new URL(import.meta.url).searchParams.get("v") || "";
+async function checkVersion() {
+  if (!APP_V || document.getElementById("newver")) return;
+  try {
+    const t = await (await fetch("index.html?nc=" + Date.now(), { cache: "no-store" })).text();
+    const m = t.match(/app\.js\?v=([0-9a-z]+)/);
+    if (m && m[1] !== APP_V) document.body.prepend(h("div", { id: "newver", class: "newver" },
+      "사이트가 새 버전으로 바뀌었습니다. 쓰던 내용이 저장된 것을 확인한 뒤 새로고침해 주세요. ",
+      h("button", { text: "새로고침", onclick: () => location.reload() })));
+  } catch (e) { /* 네트워크 오류는 무시 */ }
+}
+
 /* ---------- 심사평 대응 ---------- */
+function mergedLine() {
+  const merged = S.items.filter(it => sourcesOf(it).length > 1).sort((a, b) => (a.no || 0) - (b.no || 0));
+  if (!merged.length) return null;
+  return h("div", { class: "merged-line" }, "겹치는 지적을 합친 항목: ",
+    merged.map((it, k) => h("span", null, k ? ", " : "", h("b", { text: `대응 ${it.no}` }), ` = ${sourcesOf(it).map(s => s.code).join(" + ")}`)));
+}
 function sourcesOf(it) {
   if (Array.isArray(it.sources) && it.sources.length) return it.sources;
   if (it.original || it.translation) return [{ rv: it.reviewer, label: itemLabel(it), original: it.original || "", translation: it.translation || "" }];
@@ -223,16 +246,17 @@ function renderItems() {
     h("div", { class: "sum-line" },
       h("strong", { text: `심사 의견 ${r1 + r2}건 → 대응 항목 ${reviewerItems}개` }),
       h("span", { class: "muted", text: ` (심사위원 1: ${r1}건, 심사위원 2: ${r2}건. 같은 내용의 지적은 한 항목으로 묶음${teamItems ? `. 팀이 추가한 항목 ${teamItems}개 별도` : ""})` })),
-    h("div", { class: "muted", text: "심사위원 1·2는 편집자 결정 메일에 실린 Reviewer #1·#2입니다. 심사위원 1이 리젝 사유를 적은 사람입니다." }),
+    h("div", { class: "muted", text: "심사위원 1·2는 편집자 결정 메일에 실린 Reviewer #1·#2입니다. 심사위원 1이 리젝 사유를 적은 사람입니다. R1-5는 심사위원 1의 5번 요구라는 뜻입니다." }),
+    mergedLine(),
     h("details", { class: "src", open: S.open.has("overview") ? true : null, ontoggle: e => { if (e.target.open) S.open.add("overview"); else S.open.delete("overview"); saveOpen(); } },
       h("summary", { text: "대응 항목 한눈에 보기" }),
       h("table", { class: "t overview" },
-        h("thead", null, h("tr", null, ["번호", "대응 항목", "출처", "상태", "담당", "원고 수정", "원고 표시", "댓글"].map(x => h("th", { text: x })))),
+        h("thead", null, h("tr", null, ["번호", "대응 항목", "출처 (원래 번호)", "상태", "담당", "원고 수정", "원고 표시", "댓글"].map(x => h("th", { text: x })))),
         h("tbody", null, S.items.map(it => {
           const L = linksForItem(it.id);
           return h("tr", { class: "clickable", onclick: () => { const el = document.getElementById("item-" + it.id); if (el) el.scrollIntoView({ block: "start" }); } },
             h("td", { text: it.no ? String(it.no) : "-" }), h("td", { text: it.topic || "" }),
-            h("td", { text: sourcesOf(it).map(s => s.label).join(", ") || "팀 추가" }),
+            h("td", { class: sourcesOf(it).length > 1 ? "merged-cell" : "", text: sourcesOf(it).map(s => `${s.code || ""} (${s.label})`).join(" + ") || "팀 추가" }),
             h("td", { text: it.status || "미착수" }), h("td", { text: it.owner || "-" }),
             h("td", { text: String(L.revs.length) }), h("td", { text: String(L.anns.length) }),
             h("td", { text: String((S.comments[it.id] || []).length) }));
@@ -293,6 +317,7 @@ function renderItemCard(it) {
     S.chat.filter(m => (m.items || []).includes(it.id)).map(m => [m.id, m.pinned, m.text]), M.loaded]);
   const head = h("div", { class: "card-head" },
     h("span", { class: "code " + (srcs.length ? "rv" : "etc"), text: label }),
+    codesOf(it).length ? h("span", { class: "codes" + (srcs.length > 1 ? " merged" : ""), title: srcs.map(s => `${s.code}: ${s.label}`).join("\n"), text: (srcs.length > 1 ? "통합 " : "") + codeText(it) }) : null,
     editInput(path, "topic", it.topic, label, "주제", { cls: "topic", placeholder: "주제" }),
     h("span", { class: "muted", text: "상태" }),
     selectBox(STATUS, st, v => setField(path, "status", v, label, "상태", st)),
@@ -300,10 +325,11 @@ function renderItemCard(it) {
     selectBox(ownerOptions(), it.owner || "", v => setField(path, "owner", v, label, "담당", it.owner || ""), "미지정"),
     h("button", { class: "small", text: "이 항목 AI용 복사", onclick: () => copyText(itemMarkdown(it)) }));
   const srcBox = h("div", { class: "sources" },
+    srcs.length > 1 ? h("div", { class: "merge-note", text: `겹치는 지적 ${srcs.length}건을 합친 항목입니다: ${srcs.map(s => `${s.code} (${s.label})`).join(", ")}. 두 원문을 아래에 모두 표시합니다.` }) : null,
     srcs.length ? srcs.map((s, k) => {
       const key = it.id + ":en" + k;
       return h("div", { class: "source " + (s.rv === "R2" ? "r2" : "r1") },
-        h("div", { class: "source-head" }, h("span", { class: "chip rvchip " + (s.rv === "R2" ? "r2" : "r1"), text: s.label || reviewerName(s.rv) })),
+        h("div", { class: "source-head" }, h("span", { class: "chip rvchip " + (s.rv === "R2" ? "r2" : "r1"), text: (s.code ? s.code + " · " : "") + (s.label || reviewerName(s.rv)) })),
         h("div", { class: "source-ko", text: s.translation || "(번역 없음)" }),
         h("details", { class: "src", open: S.open.has(key) ? true : null, ontoggle: e => { if (e.target.open) S.open.add(key); else S.open.delete(key); saveOpen(); } },
           h("summary", { text: "영어 원문" }), h("div", { class: "pre", text: s.original || "" })));
@@ -459,8 +485,8 @@ function renderMembers() {
 /* ---------- AI용 복사, 백업 ---------- */
 function indent(s) { s = (s || "").trim(); return s ? s.split("\n").map(x => "  > " + x).join("\n") : "  > (비어 있음)"; }
 function itemMarkdown(it) {
-  const L = [`### 대응 ${it.no || "-"} · ${it.topic || ""}`, `- 상태: ${it.status || "미착수"} / 담당: ${it.owner || "미지정"}`];
-  for (const s of sourcesOf(it)) { L.push(`- ${s.label} 한글 번역:\n${indent(s.translation)}`); L.push(`- ${s.label} 영어 원문:\n${indent(s.original)}`); }
+  const L = [`### 대응 ${it.no || "-"}${codesOf(it).length ? " (" + codeText(it) + ")" : ""} · ${it.topic || ""}`, `- 상태: ${it.status || "미착수"} / 담당: ${it.owner || "미지정"}`];
+  for (const s of sourcesOf(it)) { const nm = (s.code ? s.code + " · " : "") + s.label; L.push(`- ${nm} 한글 번역:\n${indent(s.translation)}`); L.push(`- ${nm} 영어 원문:\n${indent(s.original)}`); }
   for (const [f, fl] of ITEM_FIELDS) L.push(`- ${fl}:\n${indent(it[f])}`);
   const Lk = linksForItem(it.id);
   if (Lk.revs.length) { L.push("- 원고 수정:"); for (const r of Lk.revs) L.push(`  - [${r.status || "제안"}] ${blockLabel(r.id)}: ${cut(plainOf(r.text), 300)}${r.note ? " (이유: " + r.note + ")" : ""}`); }

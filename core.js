@@ -115,8 +115,15 @@ export function reviewerName(r) {
   if (r === "R2") return "심사위원 2";
   return "팀 추가";
 }
+export function codesOf(it) {
+  if (!it) return [];
+  if (Array.isArray(it.sources) && it.sources.length) return it.sources.map(s => s.code).filter(Boolean);
+  return it.code && it.code !== "추가" ? [it.code] : [];
+}
+export function codeText(it) { return codesOf(it).join(" + "); }
 export function itemLabel(it) {
   if (!it) return "(삭제된 항목)";
+  if (Array.isArray(it.sources) && it.sources.length > 1) return it.sources.map(s => s.label).join(" + ");
   const who = reviewerName(it.reviewer);
   const code = String(it.code || "");
   let part = "";

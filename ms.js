@@ -1,10 +1,10 @@
 import {
   S, h, db, toast, fmt, tsMs, errMsg, myName, writeLog, scheduleRender, confirmButton, keyed, sigOf, patchChildren,
-  itemLabel, itemById, itemFull, lsGet, lsSet, colorFor, cut, copyText, modal, editArea, autosize, restoreFocus,
+  itemLabel, itemById, itemFull, codeText, lsGet, lsSet, colorFor, cut, copyText, modal, editArea, autosize, restoreFocus,
   doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, serverTimestamp, writeBatch, arrayUnion
-} from "./core.js?v=3";
-import { parseMarkup, plainOf, diffMarkup, originalPieces, insertedPieces, fmtNode, markupNodes, tableToText, textToTable } from "./markup.js?v=3";
-import { getFileURL, fileByPath } from "./files.js?v=3";
+} from "./core.js?v=4";
+import { parseMarkup, plainOf, diffMarkup, originalPieces, insertedPieces, fmtNode, markupNodes, tableToText, textToTable } from "./markup.js?v=4";
+import { getFileURL, fileByPath } from "./files.js?v=4";
 
 export const M = {
   blocks: [], byId: new Map(), plain: new Map(), loaded: false, loading: false, error: "",
@@ -396,7 +396,8 @@ function sideRevs() {
 }
 export function itemShortName(it) {
   if (!it) return "(삭제된 항목)";
-  return (it.no ? `대응 ${it.no}` : "대응") + " · " + cut(it.topic || "", 18);
+  const c = codeText(it);
+  return (it.no ? `대응 ${it.no}` : "대응") + (c ? ` (${c})` : "") + " · " + cut(it.topic || "", 18);
 }
 
 /* ---------- 도구 모음 ---------- */
@@ -519,7 +520,7 @@ function closePopover() { if (M.popover) { M.popover.remove(); M.popover = null;
 function itemSelect(value, blank) {
   return h("select", { class: "pop-item" },
     h("option", { value: "", text: blank }),
-    S.items.map(it => h("option", { value: it.id, text: `대응 ${it.no || "-"} · ${cut(it.topic || "", 40)}`, selected: value === it.id ? true : null })));
+    S.items.map(it => h("option", { value: it.id, text: `대응 ${it.no || "-"}${codeText(it) ? " (" + codeText(it) + ")" : ""} · ${cut(it.topic || "", 40)}`, selected: value === it.id ? true : null })));
 }
 function openAnnForm(ev, info) {
   closePopover();
@@ -604,7 +605,7 @@ function openEditor(target) {
   const items = new Set(rev ? rev.items || [] : []);
   const itemBoxes = h("div", { class: "ed-items" }, S.items.map(it => h("label", { class: "tg" },
     h("input", { type: "checkbox", checked: items.has(it.id), onchange: e => { if (e.target.checked) items.add(it.id); else items.delete(it.id); } }),
-    `대응 ${it.no || "-"} · ${cut(it.topic || "", 26)}`)));
+    `대응 ${it.no || "-"}${codeText(it) ? " (" + codeText(it) + ")" : ""} · ${cut(it.topic || "", 26)}`)));
   const note = h("input", { type: "text", class: "ed-note", placeholder: "수정 이유·설명 (심사평 대응과 연결해서 적으면 나중에 답변서 쓰기가 쉽습니다)", value: rev ? rev.note || "" : "" });
   const save = async (opts = {}) => {
     const newText = opts.del ? "" : ta.value;
