@@ -27,7 +27,7 @@ export const STATUS = ["미착수", "논의 중", "방향 확정", "작성 중",
 export const S = {
   user: null, me: null, isAdmin: false, ready: false,
   members: [], items: [], comments: {}, tasks: [], journals: [], docs: [], log: [],
-  anns: [], revs: [], locks: [], chat: [], files: [], uploads: [],
+  anns: [], revs: [], locks: [], chat: [], files: [], uploads: [], fnotes: [],
   tab: lsGet("tab") || "items",
   f: { reviewer: "", status: "", owner: "", q: "" },
   open: new Set(safeJSON(lsGet("open"), [])),
@@ -252,7 +252,9 @@ document.addEventListener("input", () => { lastInput = Date.now(); }, true);
 document.addEventListener("focusout", () => { if (deferTimer) { clearTimeout(deferTimer); deferTimer = null; setTimeout(scheduleRender, 60); } }, true);
 function userIsTyping() {
   const a = document.activeElement;
-  if (!a || !(a.tagName === "TEXTAREA" || a.tagName === "INPUT")) return false;
+  if (!a) return false;
+  const texty = a.tagName === "TEXTAREA" || (a.tagName === "INPUT" && !["checkbox", "radio", "button", "submit", "file", "range", "color"].includes((a.type || "").toLowerCase()));
+  if (!texty) return false;
   return composing || (Date.now() - lastInput < 2500);
 }
 export function scheduleRender() {

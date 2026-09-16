@@ -5,11 +5,12 @@ import {
   ownerOptions, itemLabel, itemById, reviewerName, codesOf, codeText, lsSet, saveOpen, copyText, STATUS,
   doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, query, orderBy, limit, onSnapshot,
   serverTimestamp, writeBatch
-} from "./core.js?v=4";
-import { renderMs, unmountMs, M, scrollToBlock, blockLabel, linksForItem, itemShortName, msMarkdownSummary } from "./ms.js?v=4";
-import { renderFiles } from "./files.js?v=4";
-import { renderChat } from "./chat.js?v=4";
-import { plainOf } from "./markup.js?v=4";
+} from "./core.js?v=5";
+import { renderMs, unmountMs, M, scrollToBlock, blockLabel, linksForItem, itemShortName, msMarkdownSummary } from "./ms.js?v=5";
+import { renderFiles } from "./files.js?v=5";
+import { renderChat } from "./chat.js?v=5";
+import { plainOf } from "./markup.js?v=5";
+import { memoOn, setMemo, openCount, notesSig, renderNoteField, noteSummary, copyAiQuestions, itemNotesLines, showResolved, setShowResolved } from "./fnotes.js?v=5";
 
 const J_STATUS = ["후보", "검토 중", "유력", "제외", "확정"];
 const TABS = [
@@ -86,6 +87,7 @@ function startData() {
   listen(query(collection(db, "docs"), orderBy("order")), "docs");
   listen(query(collection(db, "log"), orderBy("at", "desc"), limit(150)), "log");
   listen(collection(db, "anns"), "anns");
+  listen(collection(db, "fnotes"), "fnotes");
   listen(collection(db, "revs"), "revs");
   listen(collection(db, "locks"), "locks");
   listen(query(collection(db, "chat"), orderBy("at", "desc"), limit(300)), "chat");
@@ -214,6 +216,14 @@ async function checkVersion() {
 }
 
 /* ---------- 심사평 대응 ---------- */
+function noteLine() {
+  const s = noteSummary();
+  return h("div", { class: "note-line" },
+    h("span", { text: `옆 메모: 해결 안 된 ${s.total}건` }),
+    h("span", { class: "muted", text: ` (AI 질문 ${s.aiOpen}건 중 답변 대기 ${s.aiWait}건 · 팀원 질문 ${s.team}건 · 나에게 온 질문 ${s.toMe}건)` }),
+    h("button", { class: "small", text: "AI 질문 메모 모아 복사", title: "해결 안 된 'AI에게' 메모를 선택한 부분과 칸 내용까지 묶어 복사합니다. 각자 쓰는 AI에 붙여 넣으면 됩니다.", onclick: copyAiQuestions }),
+    h("label", { class: "tg" }, h("input", { type: "checkbox", checked: showResolved(), onchange: e => setShowResolved(e.target.checked) }), " 해결된 메모도 보기"));
+}
 function mergedLine() {
   const merged = S.items.filter(it => sourcesOf(it).length > 1).sort((a, b) => (a.no || 0) - (b.no || 0));
   if (!merged.length) return null;
@@ -248,6 +258,7 @@ function renderItems() {
       h("span", { class: "muted", text: ` (심사위원 1: ${r1}건, 심사위원 2: ${r2}건. 같은 내용의 지적은 한 항목으로 묶음${teamItems ? `. 팀이 추가한 항목 ${teamItems}개 별도` : ""})` })),
     h("div", { class: "muted", text: "심사위원 1·2는 편집자 결정 메일에 실린 Reviewer #1·#2입니다. 심사위원 1이 리젝 사유를 적은 사람입니다. R1-5는 심사위원 1의 5번 요구라는 뜻입니다." }),
     mergedLine(),
+    noteLine(),
     h("details", { class: "src", open: S.open.has("overview") ? true : null, ontoggle: e => { if (e.target.open) S.open.add("overview"); else S.open.delete("overview"); saveOpen(); } },
       h("summary", { text: "대응 항목 한눈에 보기" }),
       h("table", { class: "t overview" },
@@ -261,7 +272,7 @@ function renderItems() {
             h("td", { text: String(L.revs.length) }), h("td", { text: String(L.anns.length) }),
             h("td", { text: String((S.comments[it.id] || []).length) }));
         })))));
-  const nodes = [keyed(summary, "summary", sigOf([S.items.map(i => [i.id, i.no, i.topic, i.status, i.owner, sourcesOf(i).map(s => s.label)]), S.anns.map(a => a.itemId), S.revs.map(r => r.items), Object.values(S.comments).map(c => c.length), S.open.has("overview")]))];
+  const nodes = [keyed(summary, "summary", sigOf([S.fnotes.map(n => [n.id, n.kind, n.to, n.resolved, (n.replies || []).length]), showResolved(), S.items.map(i => [i.id, i.no, i.topic, i.status, i.owner, sourcesOf(i).map(s => s.label)]), S.anns.map(a => a.itemId), S.revs.map(r => r.items), Object.values(S.comments).map(c => c.length), S.open.has("overview")]))];
 
   const bar = h("div", { class: "bar" },
     selectBox([["R1", "심사위원 1 의견이 있는 항목"], ["R2", "심사위원 2 의견이 있는 항목"], ["both", "두 심사위원 공통 항목"], ["team", "팀이 추가한 항목"]], f.reviewer, v => { f.reviewer = v; scheduleRender(); }, "모든 항목"),
@@ -314,7 +325,8 @@ function renderItemCard(it) {
     Object.entries(S.armed).filter(([k, v]) => k.includes(it.id) && v > Date.now()).map(x => x[0]),
     cmts.map(c => S.armed["delc:" + c.id] > Date.now()),
     L.revs.map(r => [r.id, r.status, r.note, r.updatedAt, r.author, blockLabel(r.id)]), L.anns.map(a => [a.id, a.text, a.resolved, a.quote]),
-    S.chat.filter(m => (m.items || []).includes(it.id)).map(m => [m.id, m.pinned, m.text]), M.loaded]);
+    S.chat.filter(m => (m.items || []).includes(it.id)).map(m => [m.id, m.pinned, m.text]), M.loaded,
+    memoOn(it.id), notesSig(it.id)]);
   const head = h("div", { class: "card-head" },
     h("span", { class: "code " + (srcs.length ? "rv" : "etc"), text: label }),
     codesOf(it).length ? h("span", { class: "codes" + (srcs.length > 1 ? " merged" : ""), title: srcs.map(s => `${s.code}: ${s.label}`).join("\n"), text: (srcs.length > 1 ? "통합 " : "") + codeText(it) }) : null,
@@ -323,6 +335,7 @@ function renderItemCard(it) {
     selectBox(STATUS, st, v => setField(path, "status", v, label, "상태", st)),
     h("span", { class: "muted", text: "담당" }),
     selectBox(ownerOptions(), it.owner || "", v => setField(path, "owner", v, label, "담당", it.owner || ""), "미지정"),
+    h("button", { class: "small" + (memoOn(it.id) ? " primary" : ""), text: memoOn(it.id) ? "편집 모드로" : `옆 메모 보기·달기${openCount(it.id) ? " (" + openCount(it.id) + ")" : ""}`, onclick: () => setMemo(it.id, !memoOn(it.id)) }),
     h("button", { class: "small", text: "이 항목 AI용 복사", onclick: () => copyText(itemMarkdown(it)) }));
   const srcBox = h("div", { class: "sources" },
     srcs.length > 1 ? h("div", { class: "merge-note", text: `겹치는 지적 ${srcs.length}건을 합친 항목입니다: ${srcs.map(s => `${s.code} (${s.label})`).join(", ")}. 두 원문을 아래에 모두 표시합니다.` }) : null,
@@ -335,10 +348,17 @@ function renderItemCard(it) {
           h("summary", { text: "영어 원문" }), h("div", { class: "pre", text: s.original || "" })));
     }) : h("div", { class: "muted", text: "팀이 추가한 항목입니다 (심사 의견 없음)." }));
   const grid = h("div", { class: "grid" });
+  const memo = memoOn(it.id);
+  if (memo) grid.append(h("div", { class: "memo-guide", text: "옆 메모 모드: 글자를 드래그하면 'AI에게 묻기 / 팀원에게 묻기'가 뜹니다. 메모는 오른쪽에 접혀 있고 누르면 펼쳐집니다. 글을 고치려면 '편집 모드로'를 누르세요." }));
   for (const [field, flabel, isKey] of ITEM_FIELDS) {
     const key = path + "#" + field;
-    grid.append(h("label", { class: isKey ? "key" : "" }, flabel, S.remoteChanged.has(key) ? h("span", { class: "badge-remote", text: "다른 사람이 수정함" }) : null));
-    grid.append(h("div", { class: isKey ? "key-field" : "" }, editArea(path, field, it[field], label, flabel, { placeholder: isKey ? "팀 논의로 정한 대응 방향" : "" })));
+    const cnt = openCount(it.id, field);
+    grid.append(h("label", { class: isKey ? "key" : "" }, flabel,
+      cnt ? h("button", { class: "nf-count", title: "옆 메모 보기", text: `메모 ${cnt}`, onclick: () => setMemo(it.id, true) }) : null,
+      S.remoteChanged.has(key) ? h("span", { class: "badge-remote", text: "다른 사람이 수정함" }) : null));
+    grid.append(h("div", { class: isKey ? "key-field" : "" }, memo
+      ? renderNoteField(it, path, field, flabel, it[field])
+      : editArea(path, field, it[field], label, flabel, { placeholder: isKey ? "팀 논의로 정한 대응 방향" : "" })));
   }
   const newKey = "newc#" + it.id;
   const ctext = h("textarea", { class: "auto", placeholder: "댓글 (Ctrl+Enter로 등록)", rows: 1, dataset: { key: newKey }, value: S.dirty[newKey] || "",
@@ -488,6 +508,7 @@ function itemMarkdown(it) {
   const L = [`### 대응 ${it.no || "-"}${codesOf(it).length ? " (" + codeText(it) + ")" : ""} · ${it.topic || ""}`, `- 상태: ${it.status || "미착수"} / 담당: ${it.owner || "미지정"}`];
   for (const s of sourcesOf(it)) { const nm = (s.code ? s.code + " · " : "") + s.label; L.push(`- ${nm} 한글 번역:\n${indent(s.translation)}`); L.push(`- ${nm} 영어 원문:\n${indent(s.original)}`); }
   for (const [f, fl] of ITEM_FIELDS) L.push(`- ${fl}:\n${indent(it[f])}`);
+  L.push(...itemNotesLines(it.id));
   const Lk = linksForItem(it.id);
   if (Lk.revs.length) { L.push("- 원고 수정:"); for (const r of Lk.revs) L.push(`  - [${r.status || "제안"}] ${blockLabel(r.id)}: ${cut(plainOf(r.text), 300)}${r.note ? " (이유: " + r.note + ")" : ""}`); }
   if (Lk.anns.length) { L.push("- 원고 표시:"); for (const a of Lk.anns) L.push(`  - “${cut(a.quote, 120)}” ${a.text || ""} (${a.name})`); }
