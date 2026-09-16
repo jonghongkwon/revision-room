@@ -1,7 +1,7 @@
 import {
   S, h, db, toast, fmt, errMsg, myName, writeLog, scheduleRender, confirmButton, keyed, sigOf, patchChildren,
   doc, getDocs, setDoc, updateDoc, deleteDoc, collection, serverTimestamp, writeBatch, Bytes
-} from "./core.js?v=6";
+} from "./core.js?v=7";
 
 export const CHUNK = 900000;
 const urlCache = new Map();

@@ -2,9 +2,9 @@ import {
   S, h, db, toast, fmt, tsMs, errMsg, myName, writeLog, scheduleRender, confirmButton, keyed, sigOf, patchChildren,
   itemLabel, itemById, itemFull, codeText, lsGet, lsSet, colorFor, cut, copyText, modal, editArea, autosize, restoreFocus,
   doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, serverTimestamp, writeBatch, arrayUnion
-} from "./core.js?v=6";
-import { parseMarkup, plainOf, diffMarkup, originalPieces, insertedPieces, fmtNode, markupNodes, tableToText, textToTable } from "./markup.js?v=6";
-import { getFileURL, fileByPath } from "./files.js?v=6";
+} from "./core.js?v=7";
+import { parseMarkup, plainOf, diffMarkup, originalPieces, insertedPieces, fmtNode, markupNodes, tableToText, textToTable } from "./markup.js?v=7";
+import { getFileURL, fileByPath } from "./files.js?v=7";
 
 export const M = {
   blocks: [], byId: new Map(), plain: new Map(), loaded: false, loading: false, error: "",
@@ -433,7 +433,15 @@ function showHelp() {
     h("p", { text: "[수정]을 누르면 아래 편집 창이 열립니다. 원문 대비 삭제는 빨간 취소선, 추가는 색 밑줄로 바로 보입니다. 위첨자는 {^19}, 아래첨자는 {_2}, 기울임은 {i:c}, 굵게는 {b:FIG. 1.}로 적습니다. 편집 창의 버튼으로도 넣을 수 있습니다." }),
     h("p", { text: "수정할 때 관련 대응 항목을 체크하면, [심사평 대응] 탭의 해당 항목에 '원고 반영 내역'으로 자동 연결됩니다." }),
     h("p", { text: "보기 전환: 원문(제출본), 변경 표시(Word 검토 모드와 같음), 최종본(수정을 반영한 모습). 오른쪽 카드에서 수락·거절·이력 보기가 됩니다." }),
-    h("p", { text: "왼쪽에는 목차, 책갈피, 표시 목록, 수정 목록이 있습니다. 누르면 해당 위치로 이동합니다." })));
+    h("p", { text: "왼쪽에는 목차, 책갈피, 표시 목록, 수정 목록이 있습니다. 누르면 해당 위치로 이동합니다." }),
+    h("h4", { text: "팀 작업 규칙 (요약)" }),
+    h("ul", null,
+      h("li", { text: "심사위원 요구는 R코드(R1-3 = 심사위원 1의 3번 요구), 팀 작업 단위는 '대응 N'으로 부릅니다. 모든 표시는 해당 대응 항목에 연결합니다." }),
+      h("li", { text: "리뷰어 지적: 비판이 걸리는 위치에만. '[R코드] 지적: 문제인 점' + '원문 R코드: “심사평 영어 원문 그대로”'." }),
+      h("li", { text: "메모: 그 위치에서 할 일. '[R코드] 대응: 무엇을 → 어떻게 → 근거' + '(근거: 대응 N 대응 방향 번호)'. 고치지 않는 참고 위치는 '대응(근거 위치)', 대응 방향 밖의 제안은 '(제안)'." }),
+      h("li", { text: "문제: 심사평과 별개인 오류·불일치('[오류] …', '[R코드] 확인 필요: …'). 책갈피: 대응마다 1개 '[대응 N · R코드] 주제 · 주 수정 위치'." }),
+      h("li", { text: "다른 사람의 대응 방향에 대한 의견은 심사평 대응 탭의 옆 메모(팀원에게 묻기)로 담당자에게 묻습니다." })),
+    h("p", { class: "muted", text: "전체 규칙과 현재 표시 현황: 메모·자료 탭의 '원고 검토 작업 규칙 (대응 표시 체계)'" })));
 }
 
 /* ---------- 검색 ---------- */
