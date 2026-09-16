@@ -3,7 +3,7 @@ import {
   S, h, db, toast, fmt, errMsg, myName, writeLog, cut, copyText, scheduleRender, confirmButton, autosize,
   itemById, codeText, saveOpen, lsGet, lsSet,
   doc, updateDoc, addDoc, deleteDoc, collection, serverTimestamp, arrayUnion
-} from "./core.js?v=5";
+} from "./core.js?v=6";
 
 export const KIND = { ai: "AI에게", team: "팀원에게" };
 const F = { selbar: null, pop: null, focus: null, showResolved: lsGet("fnResolved") === "1" };
@@ -294,3 +294,26 @@ export function copyAiQuestions() {
   if (!S.fnotes.some(n => n.kind === "ai" && !n.resolved)) { toast("해결되지 않은 AI 질문 메모가 없습니다."); return; }
   copyText(md);
 }
+
+/* ---------- 메모 카드를 본문 표시 높이에 맞춰 배치 (Word 여백 메모처럼) ---------- */
+export function layoutNotes(root = document) {
+  root.querySelectorAll(".nf-wrap").forEach(w => {
+    const text = w.querySelector(".nf-text"), mg = w.querySelector(".nf-margin");
+    if (!text || !mg) return;
+    const cards = [...mg.querySelectorAll(".nf-card")];
+    cards.forEach(c => { c.style.marginTop = "0px"; });
+    if (getComputedStyle(w).gridTemplateColumns.trim().split(/\s+/).length < 2) return; // 좁은 화면: 아래로 쌓기
+    const base = mg.getBoundingClientRect().top;
+    const marks = [...text.querySelectorAll("mark.nf-mark")];
+    let cur = 0;
+    cards.forEach((c, i) => {
+      const id = c.id.slice(3);
+      const m = marks.find(x => (x.dataset.ids || "").split(" ").includes(id));
+      const want = m ? m.getBoundingClientRect().top - base - 2 : cur;
+      const top = Math.max(want, cur + (i ? 5 : 0));
+      c.style.marginTop = (top - cur) + "px";
+      cur = top + c.offsetHeight;
+    });
+  });
+}
+window.addEventListener("resize", () => layoutNotes());

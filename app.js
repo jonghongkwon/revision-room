@@ -5,12 +5,12 @@ import {
   ownerOptions, itemLabel, itemById, reviewerName, codesOf, codeText, lsSet, saveOpen, copyText, STATUS,
   doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, query, orderBy, limit, onSnapshot,
   serverTimestamp, writeBatch
-} from "./core.js?v=5";
-import { renderMs, unmountMs, M, scrollToBlock, blockLabel, linksForItem, itemShortName, msMarkdownSummary } from "./ms.js?v=5";
-import { renderFiles } from "./files.js?v=5";
-import { renderChat } from "./chat.js?v=5";
-import { plainOf } from "./markup.js?v=5";
-import { memoOn, setMemo, openCount, notesSig, renderNoteField, noteSummary, copyAiQuestions, itemNotesLines, showResolved, setShowResolved } from "./fnotes.js?v=5";
+} from "./core.js?v=6";
+import { renderMs, unmountMs, M, scrollToBlock, blockLabel, linksForItem, itemShortName, msMarkdownSummary } from "./ms.js?v=6";
+import { renderFiles } from "./files.js?v=6";
+import { renderChat } from "./chat.js?v=6";
+import { plainOf } from "./markup.js?v=6";
+import { memoOn, setMemo, openCount, notesSig, renderNoteField, noteSummary, copyAiQuestions, itemNotesLines, showResolved, setShowResolved, layoutNotes } from "./fnotes.js?v=6";
 
 const J_STATUS = ["후보", "검토 중", "유력", "제외", "확정"];
 const TABS = [
@@ -184,6 +184,7 @@ function render() {
   else {
     patchChildren(sh.root, renderTab());
     sh.root.querySelectorAll("textarea.auto").forEach(t => { if (!t.dataset.sized) { autosize(t); t.dataset.sized = "1"; } });
+    if (S.tab === "items") layoutNotes(sh.root);
   }
   restoreFocus(activeKey, selStart, selEnd);
 }

@@ -298,7 +298,7 @@ mark.nf-mark.k-ai{background:var(--k-ai);border-bottom:2px solid var(--k-ai-b)}
 mark.nf-mark.k-team{background:var(--k-team);border-bottom:2px solid var(--k-team-b)}
 mark.nf-mark.k-both{background:linear-gradient(var(--k-ai),var(--k-team));border-bottom:2px solid var(--k-ai-b)}
 mark.nf-mark.hot,mark.nf-mark.focus{outline:2px solid var(--k-ai-b);outline-offset:1px}
-.nf-margin{display:flex;flex-direction:column;gap:5px;min-width:0}
+.nf-margin{display:flex;flex-direction:column;gap:0;min-width:0}
 .nf-card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--k-team-b);border-radius:7px;padding:4px 7px;font-size:12.5px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
 .nf-card.k-ai{border-left-color:var(--k-ai-b)}
 .nf-card.done{opacity:.6}

@@ -2,9 +2,9 @@ import {
   S, h, db, toast, fmt, tsMs, errMsg, myName, writeLog, scheduleRender, confirmButton, keyed, sigOf, patchChildren,
   itemLabel, itemById, itemFull, codeText, lsGet, lsSet, colorFor, cut, copyText, modal, editArea, autosize, restoreFocus,
   doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, serverTimestamp, writeBatch, arrayUnion
-} from "./core.js?v=5";
-import { parseMarkup, plainOf, diffMarkup, originalPieces, insertedPieces, fmtNode, markupNodes, tableToText, textToTable } from "./markup.js?v=5";
-import { getFileURL, fileByPath } from "./files.js?v=5";
+} from "./core.js?v=6";
+import { parseMarkup, plainOf, diffMarkup, originalPieces, insertedPieces, fmtNode, markupNodes, tableToText, textToTable } from "./markup.js?v=6";
+import { getFileURL, fileByPath } from "./files.js?v=6";
 
 export const M = {
   blocks: [], byId: new Map(), plain: new Map(), loaded: false, loading: false, error: "",
