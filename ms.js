@@ -2,9 +2,9 @@ import {
   S, h, db, toast, fmt, tsMs, errMsg, myName, writeLog, scheduleRender, confirmButton, keyed, sigOf, patchChildren,
   itemLabel, itemById, itemFull, codeText, lsGet, lsSet, colorFor, cut, copyText, modal, editArea, autosize, restoreFocus,
   doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, serverTimestamp, writeBatch, arrayUnion
-} from "./core.js?v=8";
-import { parseMarkup, plainOf, diffMarkup, originalPieces, insertedPieces, fmtNode, markupNodes, tableToText, textToTable } from "./markup.js?v=8";
-import { getFileURL, fileByPath } from "./files.js?v=8";
+} from "./core.js?v=9";
+import { parseMarkup, plainOf, diffMarkup, originalPieces, insertedPieces, fmtNode, markupNodes, tableToText, textToTable } from "./markup.js?v=9";
+import { getFileURL, fileByPath } from "./files.js?v=9";
 
 export const M = {
   blocks: [], byId: new Map(), plain: new Map(), loaded: false, loading: false, error: "",
@@ -19,6 +19,8 @@ export const M = {
   pendingScroll: null, activeAnn: null, editor: null, popover: null
 };
 const TYPE_LABEL = { memo: "메모", reviewer: "리뷰어 지적", issue: "문제", bookmark: "책갈피" };
+const TYPE_RANK = { bookmark: 0, reviewer: 1, issue: 2, memo: 3 };
+const annOrder = (x, y) => ((TYPE_RANK[x.type] ?? 9) - (TYPE_RANK[y.type] ?? 9)) || (tsMs(x.createdAt) - tsMs(y.createdAt));
 const VIEW_LABEL = { orig: "원문", markup: "변경 표시", final: "최종본" };
 const TEXT_TYPES = new Set(["title", "authors", "affil", "h1", "h2", "h3", "p", "caption", "tnote", "ref"]);
 const SPECIAL = ["μ", "°", "×", "−", "–", "—", "±", "≤", "≥", "≈", "~", "→", "↔", "·", "Ω", "α", "β", "γ", "δ", "Δ", "σ", "τ", "θ", "λ", "π", "ε", "²", "³", "⁻", "¹", "⁰", "½", "‰", "Å", "℃", "′", "″", "“", "”", "‘", "’"];
@@ -325,7 +327,7 @@ function annCard(a) {
 function rowFor(entry, revs) {
   const bid = entry.id;
   const rev = entry.inserted ? entry.rev : entry.rev;
-  const anns = S.anns.filter(a => a.bid === bid && M.show[a.type] !== false).sort((x, y) => (x.whole ? -1 : x.start) - (y.whole ? -1 : y.start));
+  const anns = S.anns.filter(a => a.bid === bid && M.show[a.type] !== false).sort((x, y) => ((x.whole ? -1 : x.start) - (y.whole ? -1 : y.start)) || annOrder(x, y));
   const lock = lockFor(bid);
   const sig = sigOf([bid, M.view, M.show, M.hideResolved, M.expandAll, anns.map(a => M.openCards.has(a.id)), M.activeAnn && anns.some(a => a.id === M.activeAnn) ? M.activeAnn : 0,
     rev ? [rev.text, rev.status, rev.del, rev.items, rev.note, rev.author, rev.updatedAt, rev.decidedBy] : 0,
@@ -383,7 +385,7 @@ function sideAnns(onlyBookmarks) {
     if (f.state === "resolved") list = list.filter(a => a.resolved);
   }
   const order = new Map(M.blocks.map((b, i) => [b.id, i]));
-  list.sort((a, b) => ((order.get(a.bid) ?? 1e9) - (order.get(b.bid) ?? 1e9)) || (a.start - b.start));
+  list.sort((a, b) => ((order.get(a.bid) ?? 1e9) - (order.get(b.bid) ?? 1e9)) || ((a.whole ? -1 : a.start) - (b.whole ? -1 : b.start)) || annOrder(a, b));
   const out = [];
   if (!onlyBookmarks) {
     out.push(h("div", { class: "side-filter" },

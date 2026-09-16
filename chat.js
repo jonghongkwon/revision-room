@@ -1,8 +1,8 @@
 import {
   S, h, db, toast, fmt, errMsg, myName, writeLog, scheduleRender, confirmButton, keyed, sigOf, cut, itemById,
   doc, updateDoc, addDoc, deleteDoc, collection, serverTimestamp
-} from "./core.js?v=8";
-import { itemShortName } from "./ms.js?v=8";
+} from "./core.js?v=9";
+import { itemShortName } from "./ms.js?v=9";
 
 export const C = { filter: "all", item: "", pickItems: new Set() };
 
