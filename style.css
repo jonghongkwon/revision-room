@@ -332,3 +332,9 @@ mark.nf-mark.hot,mark.nf-mark.focus{outline:2px solid var(--k-ai-b);outline-offs
 .help h4{margin:14px 0 4px;font-size:14px}
 .help ul{margin:4px 0 6px 18px;padding:0}
 .help li{margin:3px 0;line-height:1.6}
+
+/* v8: 원고 카드 접기 */
+.mc.collapsed{cursor:pointer;padding:4px 8px}
+.mc.collapsed:hover{box-shadow:0 1px 6px rgba(0,0,0,.12)}
+.mc-sum{margin-top:2px;color:var(--ink);font-size:12.5px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mc-caret{margin-left:auto;color:var(--muted)}

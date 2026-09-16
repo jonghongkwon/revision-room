@@ -3,7 +3,7 @@ import {
   S, h, db, toast, fmt, errMsg, myName, writeLog, cut, copyText, scheduleRender, confirmButton, autosize,
   itemById, codeText, saveOpen, lsGet, lsSet,
   doc, updateDoc, addDoc, deleteDoc, collection, serverTimestamp, arrayUnion
-} from "./core.js?v=7";
+} from "./core.js?v=8";
 
 export const KIND = { ai: "AI에게", team: "팀원에게" };
 const F = { selbar: null, pop: null, focus: null, showResolved: lsGet("fnResolved") === "1" };

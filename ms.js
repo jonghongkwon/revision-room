@@ -2,15 +2,17 @@ import {
   S, h, db, toast, fmt, tsMs, errMsg, myName, writeLog, scheduleRender, confirmButton, keyed, sigOf, patchChildren,
   itemLabel, itemById, itemFull, codeText, lsGet, lsSet, colorFor, cut, copyText, modal, editArea, autosize, restoreFocus,
   doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, serverTimestamp, writeBatch, arrayUnion
-} from "./core.js?v=7";
-import { parseMarkup, plainOf, diffMarkup, originalPieces, insertedPieces, fmtNode, markupNodes, tableToText, textToTable } from "./markup.js?v=7";
-import { getFileURL, fileByPath } from "./files.js?v=7";
+} from "./core.js?v=8";
+import { parseMarkup, plainOf, diffMarkup, originalPieces, insertedPieces, fmtNode, markupNodes, tableToText, textToTable } from "./markup.js?v=8";
+import { getFileURL, fileByPath } from "./files.js?v=8";
 
 export const M = {
   blocks: [], byId: new Map(), plain: new Map(), loaded: false, loading: false, error: "",
   view: lsGet("msView") || "markup",
   show: Object.assign({ memo: true, reviewer: true, issue: true, bookmark: true, rev: true }, JSON.parse(lsGet("msShow") || "{}")),
   hideResolved: lsGet("msHideRes") === "1",
+  expandAll: lsGet("msExpand") === "1",
+  openCards: new Set((() => { try { return JSON.parse(lsGet("msCards") || "[]"); } catch (e) { return []; } })()),
   side: lsGet("msSide") || "toc",
   sideFilter: { type: "", item: "", state: "open" },
   q: "", hits: [], hitIdx: -1,
@@ -270,8 +272,25 @@ function revCard(entry) {
       confirmButton(r.kind === "insert" ? "새 문단 지우기" : "원문으로 되돌리기", () => revertRev(r), "small danger", "rv:" + bid)));
 }
 
+function itemTag(it) {
+  if (!it) return "(삭제된 항목)";
+  const c = codeText(it);
+  return (it.no ? `대응 ${it.no}` : "대응") + (c ? ` · ${c}` : "");
+}
 function annCard(a) {
   const cls = "mc ann a-" + a.type + (a.resolved ? " resolved" : "") + (M.activeAnn === a.id ? " active" : "");
+  const open = M.expandAll || M.openCards.has(a.id) || S.dirty["reply#" + a.id] !== undefined;
+  if (!open) {
+    const first = String(a.text || "").split("\n")[0] || ("“" + (a.quote || "") + "”");
+    const nrep = (a.replies || []).length;
+    return h("div", { class: cls + " collapsed", dataset: { ann: a.id }, title: "눌러서 펼치기", onclick: () => activate(a.id, false) },
+      h("div", { class: "mc-head" },
+        h("span", { class: "chip t-" + a.type, text: TYPE_LABEL[a.type] + (a.whole ? " (문단)" : "") }),
+        a.itemId ? h("span", { class: "chip item", text: itemTag(itemById(a.itemId)) }) : null,
+        nrep ? h("span", { class: "meta", text: `답글 ${nrep}` }) : null,
+        h("span", { class: "mc-caret", text: "▸" })),
+      h("div", { class: "mc-sum", text: cut(first, 110) }));
+  }
   const replyKey = "reply#" + a.id;
   const input = h("input", { type: "text", placeholder: "답글 (Enter)", dataset: { key: replyKey }, value: S.dirty[replyKey] || "",
     oninput: e => { S.dirty[replyKey] = e.target.value; },
@@ -293,6 +312,7 @@ function annCard(a) {
     editArea("anns/" + a.id, "text", a.text, TYPE_LABEL[a.type], "내용", { placeholder: a.type === "bookmark" ? "책갈피 이름" : "내용", cls: "mc-ta" }),
     (a.replies || []).length ? h("div", { class: "replies" }, a.replies.map(r => h("div", { class: "reply" }, h("b", { text: r.n }), " ", h("span", { class: "meta", text: fmt(new Date(r.at)) }), h("div", { text: r.t })))) : null,
     h("div", { class: "mc-actions" }, input,
+      M.expandAll ? null : h("button", { class: "small", text: "접기", onclick: () => { M.openCards.delete(a.id); saveCards(); if (M.activeAnn === a.id) M.activeAnn = null; scheduleRender(); } }),
       h("button", { class: "small", text: a.resolved ? "다시 열기" : "해결", onclick: async () => {
         try { await updateDoc(doc(db, "anns", a.id), { resolved: !a.resolved, resolvedBy: myName() }); await writeLog(a.resolved ? "다시 열기" : "해결", TYPE_LABEL[a.type], "", "", a.text); }
         catch (e) { toast(errMsg(e)); }
@@ -307,7 +327,7 @@ function rowFor(entry, revs) {
   const rev = entry.inserted ? entry.rev : entry.rev;
   const anns = S.anns.filter(a => a.bid === bid && M.show[a.type] !== false).sort((x, y) => (x.whole ? -1 : x.start) - (y.whole ? -1 : y.start));
   const lock = lockFor(bid);
-  const sig = sigOf([bid, M.view, M.show, M.hideResolved, M.activeAnn && anns.some(a => a.id === M.activeAnn) ? M.activeAnn : 0,
+  const sig = sigOf([bid, M.view, M.show, M.hideResolved, M.expandAll, anns.map(a => M.openCards.has(a.id)), M.activeAnn && anns.some(a => a.id === M.activeAnn) ? M.activeAnn : 0,
     rev ? [rev.text, rev.status, rev.del, rev.items, rev.note, rev.author, rev.updatedAt, rev.decidedBy] : 0,
     anns.map(a => [a.id, a.start, a.end, a.type, a.text, a.resolved, (a.replies || []).length, a.itemId, S.dirty["reply#" + a.id] !== undefined, S.armed["da:" + a.id] > Date.now()]),
     lock ? lock.name : 0, S.armed["rv:" + bid] > Date.now(),
@@ -411,7 +431,8 @@ function toolbar() {
       onclick: () => { M.view = k; lsSet("msView", k); scheduleRender(); } })));
   const toggles = h("div", { class: "toggles" }, [["memo", "메모"], ["reviewer", "리뷰어 지적"], ["issue", "문제"], ["bookmark", "책갈피"], ["rev", "수정 카드"]].map(([k, l]) =>
     h("label", { class: "tg t-" + k }, h("input", { type: "checkbox", checked: M.show[k] !== false, onchange: e => { M.show[k] = e.target.checked; lsSet("msShow", JSON.stringify(M.show)); scheduleRender(); } }), l)),
-    h("label", { class: "tg" }, h("input", { type: "checkbox", checked: M.hideResolved, onchange: e => { M.hideResolved = e.target.checked; lsSet("msHideRes", e.target.checked ? "1" : "0"); scheduleRender(); } }), "해결된 표시 숨기기"));
+    h("label", { class: "tg" }, h("input", { type: "checkbox", checked: M.hideResolved, onchange: e => { M.hideResolved = e.target.checked; lsSet("msHideRes", e.target.checked ? "1" : "0"); scheduleRender(); } }), "해결된 표시 숨기기"),
+    h("label", { class: "tg", title: "끄면 카드마다 한 줄 요약만 보이고, 누르면 그 카드만 펼쳐집니다" }, h("input", { type: "checkbox", checked: M.expandAll, onchange: e => { M.expandAll = e.target.checked; lsSet("msExpand", e.target.checked ? "1" : "0"); scheduleRender(); } }), "카드 모두 펼치기"));
   const search = h("div", { class: "search" },
     h("input", { type: "text", placeholder: "원고 검색", value: M.q, dataset: { key: "ms#q" }, oninput: e => { M.q = e.target.value; clearTimeout(M.qt); M.qt = setTimeout(() => runSearch(true), 250); },
       onkeydown: e => { if (e.key === "Enter") { e.preventDefault(); stepHit(e.shiftKey ? -1 : 1); } } }),
@@ -434,6 +455,7 @@ function showHelp() {
     h("p", { text: "수정할 때 관련 대응 항목을 체크하면, [심사평 대응] 탭의 해당 항목에 '원고 반영 내역'으로 자동 연결됩니다." }),
     h("p", { text: "보기 전환: 원문(제출본), 변경 표시(Word 검토 모드와 같음), 최종본(수정을 반영한 모습). 오른쪽 카드에서 수락·거절·이력 보기가 됩니다." }),
     h("p", { text: "왼쪽에는 목차, 책갈피, 표시 목록, 수정 목록이 있습니다. 누르면 해당 위치로 이동합니다." }),
+    h("p", { text: "오른쪽 카드는 한 줄 요약으로 접혀 있습니다. 카드나 본문의 색 표시를 누르면 그 카드가 펼쳐지고, [접기]로 다시 접습니다. 위쪽의 '카드 모두 펼치기'를 켜면 전부 펼쳐집니다." }),
     h("h4", { text: "팀 작업 규칙 (요약)" }),
     h("ul", null,
       h("li", { text: "심사위원 요구는 R코드(R1-3 = 심사위원 1의 3번 요구), 팀 작업 단위는 '대응 N'으로 부릅니다. 모든 표시는 해당 대응 항목에 연결합니다." }),
@@ -478,8 +500,14 @@ export function scrollToBlock(bid) {
   el.scrollIntoView({ block: "center" });
   el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
 }
+function saveCards() { lsSet("msCards", JSON.stringify([...M.openCards].slice(-300))); }
 function activate(annId, scrollCard) {
+  const wasOpen = M.expandAll || M.openCards.has(annId);
   M.activeAnn = annId;
+  if (!wasOpen) {
+    M.openCards.add(annId); saveCards(); scheduleRender();
+    if (scrollCard) setTimeout(() => { const c = document.querySelector(`.mc.ann[data-ann="${CSS.escape(annId)}"]`); if (c) c.scrollIntoView({ block: "nearest" }); }, 250);
+  }
   document.querySelectorAll(".pc.active-hl").forEach(e => e.classList.remove("active-hl"));
   document.querySelectorAll(`.pc[data-anns~="${CSS.escape(annId)}"]`).forEach(e => e.classList.add("active-hl"));
   document.querySelectorAll(".mc.ann.active").forEach(e => e.classList.remove("active"));
@@ -552,6 +580,7 @@ function openAnnForm(ev, info) {
       closePopover();
       window.getSelection().removeAllRanges();
       M.activeAnn = ref.id;
+      M.openCards.add(ref.id); saveCards();
       scheduleRender();
     } catch (e) { toast("저장 실패: " + errMsg(e)); }
   };
@@ -764,7 +793,7 @@ export function renderMs(root) {
   const revs = revMap();
   const seq = sequence(revs);
   // 도구 모음과 사이드바는 가볍게 통째로 교체 (입력 중이면 유지)
-  const barSig = sigOf([M.view, M.show, M.hideResolved, S.revs.map(r => r.status), S.anns.filter(a => !a.resolved).length]);
+  const barSig = sigOf([M.view, M.show, M.hideResolved, M.expandAll, S.revs.map(r => r.status), S.anns.filter(a => !a.resolved).length]);
   if (mounted.bar.dataset.sig !== barSig && !typingIn(mounted.bar)) {
     mounted.bar.replaceChildren(toolbar());
     mounted.bar.dataset.sig = barSig;
